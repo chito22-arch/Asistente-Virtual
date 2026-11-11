@@ -1,0 +1,19 @@
+# Entorno virtual
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Secretos y credenciales (NUNCA subir a GitHub)
+.env
+credentials.json
+token.json
+*.token
+.cache*
+
+# Editores / SO
+.vscode/
+.idea/
+Thumbs.db
