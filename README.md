@@ -12,11 +12,30 @@ copy .env.example .env
 python -m asistente
 ```
 
+Pruebas: `python -m unittest discover tests`
+
+## Configurar Google (Gmail y Calendar)
+
+Se hace una sola vez:
+
+1. Entra en <https://console.cloud.google.com/> y crea un proyecto (p. ej. "Asistente Virtual").
+2. **APIs y servicios → Biblioteca**: habilita **Gmail API** y **Google Calendar API**.
+3. **APIs y servicios → Pantalla de consentimiento de OAuth** (o "Google Auth Platform"):
+   tipo **Externo**, rellena nombre y tu correo, y en **Usuarios de prueba** añade tu cuenta de Gmail.
+4. **Credenciales → Crear credenciales → ID de cliente de OAuth**, tipo **Aplicación de escritorio**.
+5. Descarga el JSON, renómbralo a `credentials.json` y ponlo en la raíz del proyecto.
+6. Ejecuta el asistente y escribe `revisa mi correo`: se abrirá el navegador para autorizar
+   (aparecerá "Google no ha verificado esta app": pulsa *Continuar*, es tu propia app).
+   Se crea `token.json` y no volverá a preguntar.
+
+`credentials.json` y `token.json` están en `.gitignore`: **nunca los subas a GitHub**.
+
 ## Arquitectura
 
-Cada integración es una **Skill** (`asistente/skills/`) con dos métodos: `puede_manejar(texto)` y `ejecutar(texto)`.
+Cada integración es una **Skill** (`asistente/skills/`) con dos métodos: `puede_manejar(texto)` y `ejecutar(texto, original)`.
 `core.py` recibe el texto (escrito o transcrito de voz) y lo envía a la primera skill que lo entienda.
 Añadir una función nueva = crear una skill y registrarla en `skills/__init__.py`.
+Los clientes de APIs externas viven en `asistente/servicios/`.
 
 ```
 entrada (texto / voz) -> core.procesar() -> Skill -> respuesta (texto / voz)
@@ -27,10 +46,10 @@ entrada (texto / voz) -> core.procesar() -> Skill -> respuesta (texto / voz)
 | Versión | Funcionalidad | Librerías |
 |---|---|---|
 | v0.1 ✅ | Núcleo + comandos de texto + abrir apps/webs | `python-dotenv` |
-| v0.2 | Voz: escuchar (palabra de activación) y hablar | `faster-whisper` / `SpeechRecognition`, `pyttsx3` |
-| v0.3 | Gmail: leer no leídos, buscar, enviar | `google-api-python-client`, `google-auth-oauthlib` |
-| v0.4 | Google Calendar: ver agenda, crear eventos | (mismas que Gmail) |
-| v0.5 | Spotify: play/pausa, siguiente, buscar canción | `spotipy` |
+| v0.2 ✅ | Gmail: no leídos, leer, buscar, enviar (con confirmación) | `google-api-python-client`, `google-auth-oauthlib` |
+| v0.3 | Google Calendar: ver agenda, crear eventos | (mismas que Gmail) |
+| v0.4 | Spotify: play/pausa, siguiente, buscar canción | `spotipy` |
+| v0.5 | Voz: escuchar (palabra de activación) y hablar | `faster-whisper` / `SpeechRecognition`, `pyttsx3` |
 | v0.6 | Lenguaje natural con IA (entender frases libres) | API de Claude con *tool use* |
 | v1.0 | Icono en bandeja del sistema + arranque con Windows | `pystray` |
 
@@ -38,4 +57,8 @@ entrada (texto / voz) -> core.procesar() -> Skill -> respuesta (texto / voz)
 
 - `abre calculadora`, `abre bloc de notas`, `abre spotify`, `abre youtube`
 - `qué hora es`, `qué día es`
+- `revisa mi correo` — últimos 5 no leídos
+- `lee el correo 2` — abre el nº 2 de la última lista y lo marca como leído
+- `busca correos de juan` / `busca correos sobre factura`
+- `envía un correo a alguien@mail.com asunto: Hola mensaje: ¿Quedamos mañana?` — pide confirmación
 - `ayuda`, `salir`

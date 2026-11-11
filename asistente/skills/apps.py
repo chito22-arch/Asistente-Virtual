@@ -40,7 +40,7 @@ class AppsSkill(Skill):
     def puede_manejar(self, texto: str) -> bool:
         return bool(PATRON.match(texto))
 
-    def ejecutar(self, texto: str) -> str:
+    def ejecutar(self, texto: str, original: str) -> str:
         objetivo = PATRON.match(texto).group(2).strip()
 
         if objetivo in WEBS:
