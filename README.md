@@ -47,7 +47,7 @@ entrada (texto / voz) -> core.procesar() -> Skill -> respuesta (texto / voz)
 |---|---|---|
 | v0.1 ✅ | Núcleo + comandos de texto + abrir apps/webs | `python-dotenv` |
 | v0.2 ✅ | Gmail: no leídos, leer, buscar, enviar (con confirmación) | `google-api-python-client`, `google-auth-oauthlib` |
-| v0.3 | Google Calendar: ver agenda, crear eventos | (mismas que Gmail) |
+| v0.3 ✅ | Google Calendar: ver agenda, crear eventos (con confirmación) | (mismas que Gmail) |
 | v0.4 | Spotify: play/pausa, siguiente, buscar canción | `spotipy` |
 | v0.5 | Voz: escuchar (palabra de activación) y hablar | `faster-whisper` / `SpeechRecognition`, `pyttsx3` |
 | v0.6 | Lenguaje natural con IA (entender frases libres) | API de Claude con *tool use* |
@@ -61,4 +61,11 @@ entrada (texto / voz) -> core.procesar() -> Skill -> respuesta (texto / voz)
 - `lee el correo 2` — abre el nº 2 de la última lista y lo marca como leído
 - `busca correos de juan` / `busca correos sobre factura`
 - `envía un correo a alguien@mail.com asunto: Hola mensaje: ¿Quedamos mañana?` — pide confirmación
+- `qué tengo hoy`, `qué tengo mañana`, `qué tengo el viernes`, `agenda de esta semana`
+- `crea una reunión con Ana mañana a las 10` — 1 hora por defecto, pide confirmación
+- `crea un evento Dentista el 3/12 a las 5 de la tarde durante 30 minutos`
+- `añade un evento Vacaciones el 25 de diciembre` — sin hora = todo el día
 - `ayuda`, `salir`
+
+Fechas que entiende: hoy, mañana, pasado mañana, el lunes…domingo, 3/12, 3/12/2027, 25 de diciembre.
+Horas: a las 10, a las 17:30, a las 5 de la tarde, a las 9 y media.

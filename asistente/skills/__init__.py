@@ -1,5 +1,6 @@
 from .base import Skill
 from .apps import AppsSkill
+from .calendario import CalendarioSkill
 from .gmail import GmailSkill
 from .sistema import SistemaSkill
 
@@ -7,6 +8,7 @@ from .sistema import SistemaSkill
 # (por eso "abre gmail" lo maneja AppsSkill y "revisa mi correo" GmailSkill).
 SKILLS: list[Skill] = [
     AppsSkill(),
+    CalendarioSkill(),
     GmailSkill(),
     SistemaSkill(),
 ]
