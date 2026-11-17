@@ -60,7 +60,7 @@ entrada (texto / voz) -> core.procesar() -> Skill -> respuesta (texto / voz)
 | v0.1 ✅ | Núcleo + comandos de texto + abrir apps/webs | `python-dotenv` |
 | v0.2 ✅ | Gmail: no leídos, leer, buscar, enviar (con confirmación) | `google-api-python-client`, `google-auth-oauthlib` |
 | v0.3 ✅ | Google Calendar: ver agenda, crear eventos (con confirmación) | (mismas que Gmail) |
-| v0.4 | Spotify: play/pausa, siguiente, buscar canción | `spotipy` |
+| v0.4 ✅ | Spotify: canción/artista/álbum/playlist, pausa, siguiente, volumen | `spotipy` |
 | v0.5 | Voz: escuchar (palabra de activación) y hablar | `faster-whisper` / `SpeechRecognition`, `pyttsx3` |
 | v0.6 | Lenguaje natural con IA (entender frases libres) | API de Claude con *tool use* |
 | v1.0 | Icono en bandeja del sistema + arranque con Windows | `pystray` |
