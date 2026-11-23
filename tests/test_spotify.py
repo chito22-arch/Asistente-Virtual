@@ -59,8 +59,14 @@ class TestSpotify(unittest.TestCase):
         self.assertEqual(procesar("¿Qué suena?"), "Sonando: Yesterday de The Beatles.")
 
     def test_sin_premium(self):
-        self.sp.start_playback.side_effect = SpotifyException(403, -1, "Premium required")
+        self.sp.start_playback.side_effect = SpotifyException(403, -1, "Premium required", reason="PREMIUM_REQUIRED")
         self.assertIn("Premium", procesar("pon algo de música"))
+
+    def test_restriccion_no_es_premium(self):
+        self.sp.pause_playback.side_effect = SpotifyException(403, -1, "Restriction violated", reason="UNKNOWN")
+        r = procesar("pausa")
+        self.assertNotIn("Premium", r)
+        self.assertIn("ahora mismo", r)
 
     def test_sin_dispositivo(self):
         self.sp.devices.return_value = {"devices": []}
