@@ -19,7 +19,7 @@ INTERRUPCION_TROZO = 3.0  # segundos de audio que se analizan mientras habla
 
 def recortar_para_voz(texto: str, limite: int = MAX_CARACTERES_VOZ) -> str:
     """Se queda con las primeras líneas que quepan en el límite (al menos la primera)."""
-    lineas = texto.splitlines()
+    lineas = [linea for linea in texto.splitlines() if not linea.startswith("Fuentes:")]  # solo en pantalla
     elegidas = [lineas[0]] if lineas else []
     for linea in lineas[1:]:
         if sum(len(x) for x in elegidas) + len(linea) > limite:

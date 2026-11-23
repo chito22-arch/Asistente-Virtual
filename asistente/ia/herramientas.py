@@ -14,7 +14,11 @@ from ..skills.cerrar import CerrarSkill
 from ..skills.gmail import GmailSkill
 from ..skills.recordatorios import RecordatoriosSkill
 from ..skills.spotify import SpotifySkill
+from ..servicios import internet
 from ..utils import fechas
+
+# Herramientas cuyo resultado (resultados de búsqueda) la IA debe leer y resumir en una respuesta.
+PARA_RESUMIR = {"buscar_internet", "noticias"}
 
 
 def _skill(tipo):
@@ -85,6 +89,15 @@ DEFINICIONES = [
              {"numero": {"type": "integer", "description": "Número en la lista; omitir si solo hay uno"},
               "todos": {"type": "boolean"}},
              []),
+    _funcion("buscar_internet",
+             "Busca en internet. Úsala para cualquier pregunta de datos, actualidad, personas, lugares, "
+             "definiciones, recetas, resultados deportivos, precios... o cualquier cosa que no sepas con seguridad.",
+             {"consulta": {"type": "string", "description": "Lo que buscar, en pocas palabras"}}, ["consulta"]),
+    _funcion("noticias", "Noticias recientes, en general o sobre un tema.",
+             {"tema": {"type": "string", "description": "Tema; vacío para las noticias generales"}}, []),
+    _funcion("tiempo", "El tiempo actual y la previsión (hasta 16 días) de una ciudad.",
+             {"ciudad": {"type": "string", "description": "Vacío = la ciudad del usuario"},
+              "fecha": {"type": "string", "description": "AAAA-MM-DD; vacío = hoy"}}, []),
     _funcion("gmail_enviar",
              "Envía un correo. Solo si el usuario dio la dirección de email exacta. Pedirá confirmación.",
              {"para": TEXTO, "asunto": TEXTO, "mensaje": TEXTO}, ["para", "asunto", "mensaje"]),
@@ -136,6 +149,11 @@ def ejecutar(nombre: str, args: dict, peticion: str = "") -> str:
 
 
 def _corregir_con_peticion(nombre: str, a: dict, peticion: str) -> dict:
+    if nombre == "tiempo" and peticion:
+        dia, _ = fechas.buscar_fecha(peticion, date.today())
+        if dia:
+            a["fecha"] = dia.isoformat()
+        return a
     if nombre == "recordatorio_crear" and peticion:
         duracion, _ = fechas.buscar_duracion_relativa(peticion)
         if duracion:  # "en 20 minutos" dicho por el usuario manda sobre lo calculado
@@ -221,6 +239,17 @@ def _ejecutar(nombre: str, a: dict) -> str:
     if nombre == "recordatorio_cancelar":
         numero = a.get("numero")
         return _skill(RecordatoriosSkill).cancelar(int(numero) if numero else None, bool(a.get("todos")))
+
+    if nombre == "buscar_internet":
+        resultados = internet.buscar_a_fondo(str(a.get("consulta", "")), n=5)
+        return internet.para_ia(resultados) + ("\n" + internet.fuentes(resultados) if resultados else "")
+
+    if nombre == "noticias":
+        resultados = internet.noticias(str(a.get("tema") or ""))
+        return internet.para_ia(resultados) + ("\n" + internet.fuentes(resultados) if resultados else "")
+
+    if nombre == "tiempo":
+        return internet.tiempo(str(a.get("ciudad") or ""), _fecha(a.get("fecha")))
 
     if nombre == "gmail_enviar":
         if "@" not in str(a.get("para", "")):
