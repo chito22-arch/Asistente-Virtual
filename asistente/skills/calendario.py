@@ -106,8 +106,7 @@ class CalendarioSkill(Skill):
                       "end": {"dateTime": fin.isoformat()}}
             cuando = f"{fechas.formatear_dia(dia)} de {inicio:%H:%M} a {fin:%H:%M}"
 
-        print(f"Evento: {titulo}\nCuándo: {cuando}")
-        if not self.confirmar("¿Lo añado al calendario?"):
+        if not self.confirmar(f"Evento: {titulo}\nCuándo: {cuando}\n¿Lo añado al calendario?"):
             return "Evento cancelado."
         servicio("calendar", "v3").events().insert(calendarId="primary", body=cuerpo).execute()
         return f"Añadido: {titulo}, {cuando}."
