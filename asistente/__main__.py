@@ -1,12 +1,13 @@
 """Punto de entrada.
 
-    python -m asistente          -> modo texto
-    python -m asistente --voz    -> modo voz (di "<nombre>, <orden>")
+    python -m asistente              -> modo texto
+    python -m asistente --voz        -> modo voz en la consola (di "<nombre>, <orden>")
+    pythonw -m asistente --bandeja   -> en segundo plano, con icono junto al reloj
+    python -m asistente --instalar   -> crea los accesos directos "Jarvis" (menú Inicio y escritorio)
 """
 import argparse
 import os
 import sys
-import threading
 
 if not __package__:
     # Ejecutado como archivo suelto (p. ej. con el botón ▶ de VS Code): se relanza como
@@ -23,33 +24,9 @@ if not __package__:
 
 from dotenv import load_dotenv
 
-from . import __version__, interfaz
-from .core import activar_ia, normalizar, procesar
-
-DESPEDIDAS = {"salir", "exit", "adiós", "adios", "apágate", "apagate", "hasta luego"}
-# Órdenes que, dichas mientras habla, solo sirven para callarlo (no pausan Spotify, etc.).
-CALLAR = {"para", "calla", "cállate", "callate", "silencio", "basta", "stop", "vale", "ya", "ok"}
-MAX_CARACTERES_VOZ = 300  # las respuestas más largas se leen resumidas; el resto queda en pantalla
-INTERRUPCION_TROZO = 3.0  # segundos de audio que se analizan mientras habla
-
-
-def preparar_ia(nombre: str) -> None:
-    """Activa el agente de IA si está configurado y disponible; si no, quedan los comandos fijos."""
-    from .ia.agente import Agente
-    from .ia.proveedores import crear_proveedor
-
-    proveedor = crear_proveedor()
-    if proveedor is None:
-        print("IA: desactivada (solo comandos fijos).")
-        return
-    if not proveedor.disponible():
-        print(f"IA: {proveedor.nombre} no disponible; uso solo comandos fijos.")
-        if hasattr(proveedor, "modelo"):
-            print(f"     ¿Está Ollama instalado y el modelo descargado?  ollama pull {proveedor.modelo}")
-        return
-    proveedor.precargar()
-    activar_ia(Agente(proveedor, nombre))
-    print(f"IA: {proveedor.nombre} — entiendo frases libres.")
+from . import __version__
+from .core import procesar
+from .voz.bucle import DESPEDIDAS, Voz, recortar_para_voz  # noqa: F401 (reexportados para los tests)
 
 
 def modo_texto(nombre: str) -> None:
@@ -67,130 +44,59 @@ def modo_texto(nombre: str) -> None:
     print("¡Hasta luego!")
 
 
-def recortar_para_voz(texto: str, limite: int = MAX_CARACTERES_VOZ) -> str:
-    """Se queda con las primeras líneas que quepan en el límite (al menos la primera)."""
-    lineas = texto.splitlines()
-    elegidas = [lineas[0]] if lineas else []
-    for linea in lineas[1:]:
-        if sum(len(x) for x in elegidas) + len(linea) > limite:
-            return "\n".join(elegidas) + "\nTienes el resto en pantalla."
-        elegidas.append(linea)
-    return "\n".join(elegidas)
-
-
-class Voz:
-    """Interfaz de voz: muestra y dice las respuestas; se puede interrumpir diciendo su nombre."""
-
-    def __init__(self, oido, hablante, nombre: str) -> None:
-        self.oido, self.hablante, self.nombre = oido, hablante, nombre
-
-    def hablar(self, texto: str) -> str | None:
-        """Dice el texto escuchando a la vez. Si lo interrumpes, devuelve lo que dijiste tras su nombre."""
-        from .voz.activacion import buscar_interrupcion
-
-        parar = threading.Event()
-        oido_tras_nombre: list[str] = []
-        # Si el propio texto contiene el nombre, su eco no debe interrumpirle.
-        vigilar_nombre = self.nombre.lower() not in texto.lower()
-
-        def vigilar() -> None:
-            while vigilar_nombre and not parar.is_set():
-                audio = self.oido.grabar_frase(duracion_max=INTERRUPCION_TROZO, detener=parar)
-                if audio is None or parar.is_set():
-                    continue
-                orden = buscar_interrupcion(self.oido.transcribir(audio), self.nombre)
-                if orden is not None:
-                    oido_tras_nombre.append(orden)
-                    parar.set()
-
-        hilo = threading.Thread(target=vigilar, daemon=True)
-        hilo.start()
-        self.hablante.decir(texto, parar)
-        parar.set()
-        hilo.join()
-
-        if not oido_tras_nombre:
-            return None  # terminó de hablar, o lo cortaste con Esc/espacio
-        orden = oido_tras_nombre[0]
-        if orden:  # puede que siguieras hablando cuando se cortó el trozo de audio
-            if resto := self.oido.escuchar(espera_max=1.0):
-                orden = f"{orden} {resto}"
-        print(f"  (interrumpido) {orden or '...'}")
-        return orden
-
-    def mostrar(self, texto: str) -> str | None:
-        print(texto)
-        return self.hablar(recortar_para_voz(texto))
-
-    def preguntar(self, pregunta: str) -> str:
-        print(pregunta)
-        self.hablante.decir(recortar_para_voz(pregunta))
-        respuesta = self.oido.escuchar(espera_max=8)
-        print(f"  (oído) {respuesta or '...'}")
-        return respuesta
-
-
 def modo_voz(nombre: str) -> None:
-    from .voz.activacion import extraer_comando
-    from .voz.habla import Hablante
-    from .voz.oido import Oido
+    from .voz.bucle import BucleVoz
 
-    oido = Oido(nombre)
-    print("Calibrando micrófono: guarda silencio un segundo...")
-    oido.calibrar()
-    voz = Voz(oido, Hablante(), nombre)
-    interfaz.usar(voz)
-
-    print(f"{nombre} v{__version__} — MODO VOZ. Micrófono: {oido.nombre_micro} (umbral {oido.umbral:.3f})")
-    print(f"Di '{nombre}, ayuda' o '{nombre}, apágate'.")
+    bucle = BucleVoz(nombre)
+    bucle.preparar()
     print(f"Para cortarle mientras habla: di '{nombre}' o pulsa Esc. Ctrl+C para salir.")
-    pendiente = voz.hablar("Hola, ¿en qué te ayudo?")
     try:
-        while True:
-            if pendiente is not None:
-                comando, pendiente = pendiente, None
-                if normalizar(comando) in CALLAR:
-                    continue
-            else:
-                print("🎤 Escuchando...", end="\r", flush=True)
-                frase = oido.escuchar()
-                if not frase:
-                    continue
-                print(f"  (oído) {frase}")
-                comando = extraer_comando(frase, nombre)
-                if comando is None:
-                    continue  # no iba dirigido al asistente
-
-            if not normalizar(comando):
-                voz.hablante.decir("¿Sí?")
-                comando = oido.escuchar(espera_max=6)
-                print(f"  (oído) {comando or '...'}")
-                if not comando:
-                    continue
-            if normalizar(comando) in DESPEDIDAS:
-                break
-            if normalizar(comando) in CALLAR:
-                continue
-            pendiente = voz.mostrar(procesar(comando))
+        bucle.ejecutar()
     except KeyboardInterrupt:
-        pass
-    voz.hablante.decir("Hasta luego.")
-    print("¡Hasta luego!")
+        bucle.parar()
+        print("¡Hasta luego!")
 
 
 def main() -> None:
-    load_dotenv()
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(prog="asistente", description="Asistente virtual para PC")
     parser.add_argument("--voz", action="store_true", help="controlar el asistente hablando")
     parser.add_argument("--texto", action="store_true", help="modo escrito (por defecto con python -m)")
+    parser.add_argument("--bandeja", action="store_true", help="en segundo plano con icono junto al reloj")
+    parser.add_argument("--instalar", action="store_true", help="crear accesos directos en Inicio y escritorio")
     parser.add_argument("--sin-ia", action="store_true", help="no usar IA, solo comandos fijos")
     args = parser.parse_args()
 
+    from . import windows
+
+    if args.bandeja:
+        windows.redirigir_salida_a_registro()  # con pythonw no hay consola
+    elif hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+    load_dotenv(windows.RAIZ / ".env")
+
+    if args.instalar:
+        for ruta in windows.instalar():
+            print(f"Acceso directo creado: {ruta}")
+        return
+
     nombre = os.getenv("NOMBRE_ASISTENTE", "Asistente")
+    if (args.voz or args.bandeja) and not windows.instancia_unica():
+        print(f"{nombre} ya está en marcha (mira el icono junto al reloj). Ciérralo antes de abrir otro.")
+        if args.bandeja:
+            windows.aviso(nombre, f"{nombre} ya está en marcha.")
+        return
+
     if args.sin_ia:
         os.environ["IA_PROVEEDOR"] = "ninguno"
+
+    if args.bandeja:
+        from .bandeja import Bandeja
+
+        Bandeja(nombre).ejecutar()
+        return
+
+    from .ia import preparar_ia
+
     preparar_ia(nombre)
     modo_voz(nombre) if args.voz else modo_texto(nombre)
 

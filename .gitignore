@@ -13,6 +13,9 @@ token.json
 *.token
 .cache*
 
+# Registro e icono generados por Jarvis
+.jarvis/
+
 # Editores / SO
 .vscode/*
 !.vscode/launch.json

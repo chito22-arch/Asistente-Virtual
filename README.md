@@ -17,6 +17,19 @@ En VS Code: botón ▶ sobre `asistente/__main__.py` = modo voz; F5 permite eleg
 
 Pruebas: `python -m unittest discover tests`
 
+## Uso diario: icono en la bandeja
+
+```bash
+python -m asistente --instalar   # crea el acceso directo "Jarvis" en el menú Inicio y el escritorio
+```
+
+Abre **Jarvis** desde el acceso directo: funciona en segundo plano, sin ventanas, con un icono junto al reloj.
+
+- Color del icono: 🟢 escuchando · 🟠 pensando · 🔵 hablando · ⚪ cargando / silenciado · 🔴 error.
+- Menú (clic derecho): *Escribir una orden…* (también con doble clic), *Silenciar micrófono*,
+  *Iniciar con Windows*, *Abrir registro* (`.jarvis/jarvis.log`), *Salir*.
+- Solo puede haber un Jarvis a la vez (bandeja o voz), para que no se peleen por el micrófono.
+
 ## Modo voz
 
 - Empieza cada orden con el nombre: *"Jarvis, pon música de Queen"*. Solo *"Jarvis"* → responde "¿Sí?".
@@ -86,7 +99,7 @@ entrada (texto / voz) -> core.procesar() -> Skill -> respuesta (texto / voz)
 | v0.4 ✅ | Spotify: canción/artista/álbum/playlist, pausa, siguiente, volumen | `spotipy` |
 | v0.5 ✅ | Voz: palabra de activación, respuestas habladas e interrumpibles | `faster-whisper`, `sounddevice`, SAPI (`comtypes`) |
 | v0.6 ✅ | Frases libres con IA local (Ollama + qwen3:8b) usando las skills como herramientas | `ollama` |
-| v1.0 | Icono en bandeja del sistema + arranque con Windows | `pystray` |
+| v1.0 ✅ | Icono en la bandeja del sistema, segundo plano y arranque con Windows | `pystray`, `pillow` |
 
 ## Comandos actuales
 

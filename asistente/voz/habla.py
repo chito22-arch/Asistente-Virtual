@@ -33,7 +33,11 @@ def limpiar_para_voz(texto: str) -> str:
 
 
 class Hablante:
+    """Debe usarse desde el hilo que lo crea (COM). callar() sí se puede llamar desde cualquier hilo."""
+
     def __init__(self) -> None:
+        comtypes.CoInitialize()  # cada hilo que usa COM debe inicializarlo (modo bandeja)
+        self._cortar = threading.Event()
         self.sapi = comtypes.client.CreateObject("SAPI.SpVoice")
         if voz := self._voz_espanola():
             self.sapi.Voice = voz
@@ -49,19 +53,24 @@ class Hablante:
 
     def decir(self, texto: str, parar: threading.Event | None = None) -> bool:
         """Habla y espera a terminar. Devuelve True si se cortó (evento `parar` o tecla Esc/espacio)."""
+        self._cortar.clear()
         self.sapi.Speak(limpiar_para_voz(texto), SVSF_ASYNC | SVSF_PURGAR)
         while not self.sapi.WaitUntilDone(50):
-            if (parar and parar.is_set()) or _tecla_silencio():
-                self.callar()
+            if (parar and parar.is_set()) or self._cortar.is_set() or _tecla_silencio():
+                self.sapi.Speak("", SVSF_ASYNC | SVSF_PURGAR)
                 return True
         return False
 
     def callar(self) -> None:
-        self.sapi.Speak("", SVSF_ASYNC | SVSF_PURGAR)
+        """Corta lo que esté diciendo (seguro desde otro hilo: el corte lo hace el hilo que habla)."""
+        self._cortar.set()
 
 
 def _tecla_silencio() -> bool:
-    while msvcrt.kbhit():
-        if msvcrt.getch() in TECLAS_SILENCIO:
-            return True
+    try:
+        while msvcrt.kbhit():
+            if msvcrt.getch() in TECLAS_SILENCIO:
+                return True
+    except OSError:  # sin consola (modo bandeja)
+        pass
     return False

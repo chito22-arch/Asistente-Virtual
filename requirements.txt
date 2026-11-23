@@ -7,3 +7,5 @@ sounddevice>=0.4
 numpy>=1.26
 comtypes>=1.2
 ollama>=0.4
+pystray>=0.19
+pillow>=10.0
