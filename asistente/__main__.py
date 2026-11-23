@@ -92,6 +92,9 @@ def main() -> None:
     from .servicios import recordatorios
 
     recordatorios.gestor().iniciar()  # avisa de recordatorios y temporizadores en segundo plano
+    from .servicios import programas
+
+    programas.catalogo().refrescar_en_segundo_plano()  # lista de programas instalados al día
 
     if args.bandeja:
         from .bandeja import Bandeja

@@ -31,8 +31,11 @@ TEXTO = {"type": "string"}
 ENTERO = {"type": "integer"}
 
 DEFINICIONES = [
-    _funcion("abrir_aplicacion", "Abre una aplicación del PC o una web conocida (calculadora, chrome, youtube...).",
-             {"nombre": TEXTO}, ["nombre"]),
+    _funcion("abrir_aplicacion",
+             "Abre cualquier programa instalado, una carpeta (descargas, documentos, escritorio...) o una web "
+             "conocida (youtube, gmail). Si el usuario lo describe, deduce el nombre del programa "
+             "(p. ej. 'el navegador de Mozilla' -> 'Firefox', 'el editor de código' -> 'Visual Studio Code').",
+             {"nombre": {"type": "string", "description": "Nombre del programa, carpeta o web"}}, ["nombre"]),
     _funcion("spotify_reproducir",
              "Reproduce música en Spotify. Para peticiones de ambiente o estado de ánimo "
              "('algo tranquilo', 'música para correr') usa tipo=playlist con una búsqueda descriptiva.",

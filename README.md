@@ -101,10 +101,14 @@ entrada (texto / voz) -> core.procesar() -> Skill -> respuesta (texto / voz)
 | v0.6 ✅ | Frases libres con IA local (Ollama + qwen3:8b) usando las skills como herramientas | `ollama` |
 | v1.0 ✅ | Icono en la bandeja del sistema, segundo plano y arranque con Windows | `pystray`, `pillow` |
 | v1.1 ✅ | Recordatorios y temporizadores con aviso hablado y notificación | — |
+| v1.2 ✅ | Abrir cualquier programa instalado (menú Inicio, Tienda, Steam) y carpetas | — |
 
 ## Comandos actuales
 
-- `abre calculadora`, `abre bloc de notas`, `abre spotify`, `abre youtube`
+- `abre discord`, `abre vs code`, `abre steam`, `abre big walk` — cualquier programa del menú Inicio
+  (también apps de la Tienda y juegos de Steam); tolera errores y sugiere si no lo encuentra
+- `abre la carpeta de descargas` (documentos, escritorio, imágenes, música, vídeos, papelera), `abre youtube`
+- Con IA: `abre el navegador de mozilla` → Firefox, `quiero jugar a big walk`
 - `qué hora es`, `qué día es`
 - `revisa mi correo` — últimos 5 no leídos
 - `lee el correo 2` — abre el nº 2 de la última lista y lo marca como leído
