@@ -80,9 +80,17 @@ class TestSpotify(unittest.TestCase):
         crear.assert_called_once()
 
     def test_abre_spotify_sigue_siendo_app(self):
-        with patch("asistente.skills.apps.os.startfile") as abrir:
-            procesar("abre spotify")
-        abrir.assert_called_once_with("spotify:")
+        from asistente.servicios import programas
+
+        catalogo = programas.Catalogo(programas.Path("no-existe.json"), lambda: [
+            programas.Programa("Spotify", "SpotifyAB.SpotifyMusic_zpdnekdrzrea0!Spotify")])
+        catalogo.refrescar = lambda: False  # sin escribir en disco
+        catalogo._programas = catalogo._listar()
+        catalogo._actualizado = programas.time.time()
+        with patch.object(programas, "_catalogo", catalogo), patch.object(programas, "abrir") as abrir:
+            self.assertEqual(procesar("abre spotify"), "Abriendo Spotify.")
+        self.sp.start_playback.assert_not_called()
+        self.assertEqual(abrir.call_args.args[0].nombre, "Spotify")
 
 
 if __name__ == "__main__":
