@@ -100,6 +100,7 @@ entrada (texto / voz) -> core.procesar() -> Skill -> respuesta (texto / voz)
 | v0.5 ✅ | Voz: palabra de activación, respuestas habladas e interrumpibles | `faster-whisper`, `sounddevice`, SAPI (`comtypes`) |
 | v0.6 ✅ | Frases libres con IA local (Ollama + qwen3:8b) usando las skills como herramientas | `ollama` |
 | v1.0 ✅ | Icono en la bandeja del sistema, segundo plano y arranque con Windows | `pystray`, `pillow` |
+| v1.1 ✅ | Recordatorios y temporizadores con aviso hablado y notificación | — |
 
 ## Comandos actuales
 
@@ -116,7 +117,13 @@ entrada (texto / voz) -> core.procesar() -> Skill -> respuesta (texto / voz)
 - `pon Bohemian Rhapsody`, `pon despacito de luis fonsi`, `pon música de Bad Bunny`
 - `pon la playlist Gym`, `pon el álbum Abbey Road`, `pon música` (reanuda)
 - `pausa`, `siguiente`, `anterior`, `qué suena`, `volumen 40`, `sube el volumen`, `activa aleatorio`
+- `avísame en 20 minutos`, `pon un temporizador de 5 minutos`, `recuérdame llamar a mamá en una hora`
+- `recuérdame mañana a las 9 pagar la luz`, `despiértame a las 7`, `qué recordatorios tengo`
+- `cancela el temporizador`, `cancela el recordatorio 2`, `cancela todos los recordatorios`
 - `ayuda`, `salir`
+
+Los recordatorios se guardan en `.jarvis/recordatorios.json`: si Jarvis estaba cerrado cuando vencían,
+te avisa al abrirlo ("era para las…"). Se dicen en voz alta aunque el micrófono esté silenciado.
 
 Fechas que entiende: hoy, mañana, pasado mañana, el lunes…domingo, 3/12, 3/12/2027, 25 de diciembre.
 Horas: a las 10, a las 17:30, a las 5 de la tarde, a las 9 y media.

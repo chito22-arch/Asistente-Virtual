@@ -11,7 +11,7 @@ DURACION_POR_DEFECTO = timedelta(hours=1)
 
 RE_CREAR = re.compile(
     r"^(?:crea(?:r|me)?|añade|anade|agenda(?:r|me)?|programa(?:r)?|pon(?:me)?|apunta(?:r|me)?)\s+"
-    r"(?:un |una |el |la )?(evento|reuni[oó]n|cita|recordatorio)\b",
+    r"(?:un |una |el |la )?(evento|reuni[oó]n|cita)\b",
     re.I,
 )
 RE_CONSULTA = re.compile(

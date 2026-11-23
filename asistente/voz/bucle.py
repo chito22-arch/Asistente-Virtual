@@ -2,11 +2,13 @@
 
 Estados que notifica: cargando, escuchando, pensando, hablando, silenciado, error.
 """
+import queue
 import threading
 from typing import Callable
 
 from .. import __version__, interfaz
 from ..core import normalizar, procesar
+from ..servicios import recordatorios
 
 DESPEDIDAS = {"salir", "exit", "adiós", "adios", "apágate", "apagate", "hasta luego"}
 # Órdenes que, dichas mientras habla, solo sirven para callarlo (no pausan Spotify, etc.).
@@ -85,7 +87,8 @@ class BucleVoz:
         self.estado = "cargando"
         self._salir = threading.Event()
         self._silenciado = threading.Event()
-        self._despertar = threading.Event()  # corta una escucha en curso (silenciar / salir)
+        self._despertar = threading.Event()  # corta una escucha en curso (silenciar / salir / aviso)
+        self._avisos: queue.Queue[str] = queue.Queue()
         self.voz: Voz | None = None
 
     # --- control desde fuera ---------------------------------------------
@@ -99,6 +102,11 @@ class BucleVoz:
         self._despertar.set()
         if activar and self.voz:
             self.voz.hablante.callar()
+
+    def avisar(self, texto: str) -> None:
+        """Pide decir un aviso (recordatorio) en cuanto se pueda. Seguro desde cualquier hilo."""
+        self._avisos.put(texto)
+        self._despertar.set()
 
     def parar(self) -> None:
         self._salir.set()
@@ -123,6 +131,7 @@ class BucleVoz:
         oido.calibrar()
         self.voz = Voz(oido, Hablante(), self.nombre)
         interfaz.usar(self.voz)
+        recordatorios.gestor().suscribir(self.avisar)
         print(f"{self.nombre} v{__version__} — MODO VOZ. Micrófono: {oido.nombre_micro} (umbral {oido.umbral:.3f})")
         print(f"Di '{self.nombre}, ayuda' o '{self.nombre}, apágate'.")
 
@@ -135,6 +144,15 @@ class BucleVoz:
         pendiente = voz.hablar(saludo)
 
         while not self._salir.is_set():
+            while not self._avisos.empty():  # recordatorios vencidos: se dicen aunque esté silenciado
+                aviso = self._avisos.get()
+                recordatorios.sonar()
+                self._estado("hablando")
+                if self._silenciado.is_set():
+                    voz.hablante.decir(aviso)  # sin escuchar: el micrófono está silenciado
+                else:
+                    pendiente = voz.hablar(aviso) or pendiente
+
             if self._silenciado.is_set():
                 self._estado("silenciado")
                 self._despertar.wait()

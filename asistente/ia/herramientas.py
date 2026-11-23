@@ -11,6 +11,7 @@ from ..skills import SKILLS
 from ..skills.apps import AppsSkill
 from ..skills.calendario import CalendarioSkill
 from ..skills.gmail import GmailSkill
+from ..skills.recordatorios import RecordatoriosSkill
 from ..skills.spotify import SpotifySkill
 from ..utils import fechas
 
@@ -60,6 +61,19 @@ DEFINICIONES = [
              {"consulta": TEXTO}, ["consulta"]),
     _funcion("gmail_leer", "Lee el correo número N de la última lista mostrada.",
              {"numero": ENTERO}, ["numero"]),
+    _funcion("recordatorio_crear",
+             "Crea un recordatorio o temporizador local: Jarvis avisará hablando cuando llegue la hora. "
+             "Usa 'minutos' para 'dentro de X tiempo'; usa fecha/hora para un momento concreto.",
+             {"mensaje": {"type": "string", "description": "Qué recordar; vacío para un temporizador simple"},
+              "minutos": {"type": "number", "description": "Dentro de cuántos minutos avisar"},
+              "fecha": {"type": "string", "description": "AAAA-MM-DD"},
+              "hora": {"type": "string", "description": "HH:MM en 24 h"}},
+             ["mensaje"]),
+    _funcion("recordatorio_listar", "Lista los recordatorios y temporizadores pendientes.", {}, []),
+    _funcion("recordatorio_cancelar", "Cancela recordatorios o temporizadores pendientes.",
+             {"numero": {"type": "integer", "description": "Número en la lista; omitir si solo hay uno"},
+              "todos": {"type": "boolean"}},
+             []),
     _funcion("gmail_enviar",
              "Envía un correo. Solo si el usuario dio la dirección de email exacta. Pedirá confirmación.",
              {"para": TEXTO, "asunto": TEXTO, "mensaje": TEXTO}, ["para", "asunto", "mensaje"]),
@@ -111,6 +125,15 @@ def ejecutar(nombre: str, args: dict, peticion: str = "") -> str:
 
 
 def _corregir_con_peticion(nombre: str, a: dict, peticion: str) -> dict:
+    if nombre == "recordatorio_crear" and peticion:
+        duracion, _ = fechas.buscar_duracion_relativa(peticion)
+        if duracion:  # "en 20 minutos" dicho por el usuario manda sobre lo calculado
+            a.update(minutos=duracion.total_seconds() / 60, fecha=None, hora=None)
+            return a
+        nombre = "calendario_crear"  # misma corrección de fecha y hora que un evento
+        a = _corregir_con_peticion(nombre, a, peticion)
+        a.pop("duracion_minutos", None)
+        return a
     if nombre not in ("calendario_crear", "calendario_consultar") or not peticion:
         return a
     if "semana" not in peticion.lower():
@@ -159,6 +182,28 @@ def _ejecutar(nombre: str, a: dict) -> str:
 
     if nombre == "gmail_leer":
         return _skill(GmailSkill).leer(int(a["numero"]))
+
+    if nombre == "recordatorio_crear":
+        skill = _skill(RecordatoriosSkill)
+        mensaje = str(a.get("mensaje") or "").strip()
+        if a.get("minutos"):
+            duracion = timedelta(minutes=float(a["minutos"]))
+            tipo = "recordatorio" if mensaje else "temporizador"
+            return skill.crear(datetime.now() + duracion, mensaje, tipo, duracion if tipo == "temporizador" else None)
+        dia, hora = _fecha(a.get("fecha")), _hora(a.get("hora"))
+        if dia is None and hora is None:
+            return "¿Cuándo te aviso?"
+        cuando = datetime.combine(dia or date.today(), hora or time(9, 0))
+        if dia is None and cuando <= datetime.now():
+            cuando += timedelta(days=1)
+        return skill.crear(cuando, mensaje, "recordatorio")
+
+    if nombre == "recordatorio_listar":
+        return _skill(RecordatoriosSkill).listar()
+
+    if nombre == "recordatorio_cancelar":
+        numero = a.get("numero")
+        return _skill(RecordatoriosSkill).cancelar(int(numero) if numero else None, bool(a.get("todos")))
 
     if nombre == "gmail_enviar":
         if "@" not in str(a.get("para", "")):

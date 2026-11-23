@@ -89,6 +89,10 @@ def main() -> None:
     if args.sin_ia:
         os.environ["IA_PROVEEDOR"] = "ninguno"
 
+    from .servicios import recordatorios
+
+    recordatorios.gestor().iniciar()  # avisa de recordatorios y temporizadores en segundo plano
+
     if args.bandeja:
         from .bandeja import Bandeja
 
@@ -98,7 +102,11 @@ def main() -> None:
     from .ia import preparar_ia
 
     preparar_ia(nombre)
-    modo_voz(nombre) if args.voz else modo_texto(nombre)
+    if args.voz:
+        modo_voz(nombre)
+    else:
+        recordatorios.gestor().suscribir(lambda _texto: recordatorios.sonar())
+        modo_texto(nombre)
 
 
 if __name__ == "__main__":

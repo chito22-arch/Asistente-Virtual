@@ -139,6 +139,9 @@ class Bandeja:
         try:
             from .ia import preparar_ia
 
+            from .servicios import recordatorios
+
+            recordatorios.gestor().suscribir(lambda texto: icono.notify(texto, f"⏰ {self.nombre}"))
             estado_ia = preparar_ia(self.nombre)
             self.bucle.preparar()
             icono.notify(f"Listo. Di «{self.nombre}» seguido de una orden.\n{estado_ia.splitlines()[0]}",
