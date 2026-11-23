@@ -40,4 +40,17 @@ def procesar(original: str) -> str:
     for skill in SKILLS:
         if skill.puede_manejar(texto):
             return skill.ejecutar(texto, original)
-    return "No entendí el comando. Escribe 'ayuda' para ver lo que sé hacer."
+    return _buscar_en_internet(original)
+
+
+def _buscar_en_internet(pregunta: str) -> str:
+    """Último recurso: si nadie lo entiende, se busca en internet."""
+    from .servicios.internet import SinConexion
+    from .skills.internet import InternetSkill
+
+    if len(pregunta.split()) < 2:  # una palabra suelta no es una pregunta
+        return "No entendí el comando. Di 'ayuda' para ver lo que sé hacer."
+    try:
+        return next(s for s in SKILLS if isinstance(s, InternetSkill)).responder(pregunta)
+    except SinConexion:
+        return "No entendí el comando y no puedo buscarlo en internet ahora. Di 'ayuda' para ver lo que sé hacer."

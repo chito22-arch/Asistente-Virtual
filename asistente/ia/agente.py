@@ -18,9 +18,17 @@ Reglas:
 - Si falta un dato imprescindible (por ejemplo una dirección de correo), pregúntalo; no lo inventes.
 - Para fechas usa la tabla de abajo; "por la tarde" sin hora concreta = 17:00, "por la mañana" = 10:00, "a mediodía" = 13:00.
 - No inventes duraciones: si el usuario no la dice, omite duracion_minutos.
-- Si la petición no necesita herramientas (una pregunta general, una cuenta, charla), responde en español, en una o dos frases cortas, sin markdown ni emojis: tu respuesta se lee en voz alta.
+- Para preguntas de datos, actualidad, personas, lugares, definiciones, recetas, deportes, precios o cualquier cosa que no sepas con total seguridad, usa buscar_internet. Para el tiempo usa tiempo; para noticias, noticias.
+- Solo responde sin herramientas a charla, cuentas sencillas o cosas que sabes con total seguridad: en español, en una o dos frases cortas, sin markdown ni emojis (tu respuesta se lee en voz alta).
 - No ofrezcas cosas que no puedes hacer con tus herramientas.
 {fechas}"""
+
+
+INSTRUCCION_RESUMEN = (
+    "Responde ahora a la pregunta del usuario usando SOLO la información de los resultados de búsqueda de arriba. "
+    "En español, en una a tres frases cortas, sin markdown, sin listas, sin emojis y sin URLs: se leerá en voz alta. "
+    "Si los resultados no contienen la respuesta, dilo claramente en vez de inventarla. "
+    "No menciones los números de los resultados.")
 
 
 class Agente:
@@ -49,9 +57,24 @@ class Agente:
             resultados.append(resultado)
             mensajes_tool.append({"role": "tool", "tool_name": nombre,
                                   "content": resultado[:MAX_RESULTADO_HISTORIAL]})
+        if any(nombre in herramientas.PARA_RESUMIR for nombre, _ in r.llamadas):
+            respuesta = self._resumir(sistema, usuario, r.mensaje, resultados, mensajes_tool)
+        else:
+            respuesta = "\n".join(resultados)
         # Se recuerda la llamada y su resultado: así el modelo "ve" que hay que usar herramientas.
         self._recordar(usuario, r.mensaje, *mensajes_tool)
-        return "\n".join(resultados)
+        return respuesta
+
+    def _resumir(self, sistema: str, usuario: dict, llamada: dict, resultados: list[str],
+                 mensajes_tool: list[dict]) -> str:
+        """Segunda pasada: la IA lee los resultados de internet y responde solo con lo que dicen."""
+        completos = [{**m, "content": res} for m, res in zip(mensajes_tool, resultados)]
+        instruccion = {"role": "system", "content": INSTRUCCION_RESUMEN}
+        r = self.proveedor.chat([{"role": "system", "content": sistema}, *self.historial, usuario, llamada,
+                                 *completos, instruccion], [])
+        fuentes = next((linea for res in resultados for linea in res.splitlines() if linea.startswith("Fuentes:")), "")
+        texto = r.texto.strip() or "No he encontrado una respuesta clara."
+        return f"{texto}\n{fuentes}" if fuentes else texto
 
     def _recordar(self, *mensajes: dict) -> None:
         historial = [*self.historial, *mensajes][-MAX_HISTORIAL:]

@@ -83,6 +83,17 @@ Con [Ollama](https://ollama.com) instalado: `ollama pull qwen3:8b`. Jarvis arran
 - Ejemplos: *"ponme algo tranquilo para trabajar"*, *"mira si me ha escrito Amazon"* → *"¿y Ryanair?"*,
   *"apúntame cena con Ana el viernes a las 9 de la noche"*, *"¿tengo algo el sábado?"* → *"¿y el domingo?"*.
 
+## Internet (gratis, sin claves)
+
+- **Preguntas**: *"¿cuántos habitantes tiene Valencia?"*, *"¿qué precio tiene el bitcoin?"*. Con IA, Jarvis
+  busca en DuckDuckGo (y otros buscadores si ese falla), lee las dos primeras páginas y responde en 1-3 frases
+  **solo con lo que dicen**, mostrando las fuentes en pantalla. Sin IA, da el mejor resultado tal cual.
+- Todo lo que no entiende de otra forma, lo busca en internet.
+- **Noticias**: *"noticias de hoy"*, *"noticias sobre el Real Madrid"*.
+- **El tiempo** (Open-Meteo, hasta 16 días): *"¿qué tiempo hace en Sevilla?"*, *"¿va a llover mañana?"*
+  (usa `CIUDAD` de `.env` si no dices dónde).
+- Las búsquedas van a DuckDuckGo/Google sin tu cuenta; el tiempo solo envía el nombre de la ciudad.
+
 ## Arquitectura
 
 Cada integración es una **Skill** (`asistente/skills/`) con dos métodos: `puede_manejar(texto)` y `ejecutar(texto, original)`.
@@ -109,6 +120,7 @@ entrada (texto / voz) -> core.procesar() -> Skill -> respuesta (texto / voz)
 | v1.2 ✅ | Abrir cualquier programa instalado (menú Inicio, Tienda, Steam) y carpetas | — |
 | v1.3 ✅ | Cerrar programas (como pulsar la X; a la fuerza con confirmación) | `psutil` |
 | v1.4 ✅ | Elegir micrófono por voz o desde el icono, con vuelta automática al de Windows | — |
+| v1.5 ✅ | Buscar en internet lo que no sabe, noticias y el tiempo (gratis, sin claves) | `ddgs`, Open-Meteo |
 
 ## Comandos actuales
 
