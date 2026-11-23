@@ -36,7 +36,12 @@ Abre **Jarvis** desde el acceso directo: funciona en segundo plano, sin ventanas
 - Mientras habla puedes cortarle diciendo *"Jarvis"* (o *"Jarvis, otra orden"*) o pulsando **Esc**.
 - Confirmaciones (enviar correo, crear evento) se contestan diciendo "sí" o "no".
 - Oído: Whisper `small` local (sin internet; la primera vez descarga ~460 MB). Voz: Helena (Windows).
-- Ajustes en `.env`: `NOMBRE_ASISTENTE`, `WHISPER_MODELO` (base/small/medium), `VOZ` (Helena/Sabina).
+- Ajustes en `.env`: `NOMBRE_ASISTENTE`, `WHISPER_MODELO` (base/small/medium), `VOZ` (Helena/Sabina), `MICROFONO`.
+- Micrófono: *"qué micrófonos hay"*, *"usa el micrófono 2"*, *"usa el micrófono de los OPPO"*,
+  *"usa el micrófono predeterminado"*, o en el icono → *Micrófono*. Se cambia al momento (recalibra) y se
+  guarda en `.env`. Si se desconecta, vuelve solo al de Windows y te avisa.
+  Con auriculares Bluetooth, mientras Jarvis escucha el sonido de los auriculares baja de calidad
+  (el Bluetooth no da audio de calidad y micrófono a la vez).
 
 ## Configurar Google (Gmail y Calendar)
 
@@ -103,6 +108,7 @@ entrada (texto / voz) -> core.procesar() -> Skill -> respuesta (texto / voz)
 | v1.1 ✅ | Recordatorios y temporizadores con aviso hablado y notificación | — |
 | v1.2 ✅ | Abrir cualquier programa instalado (menú Inicio, Tienda, Steam) y carpetas | — |
 | v1.3 ✅ | Cerrar programas (como pulsar la X; a la fuerza con confirmación) | `psutil` |
+| v1.4 ✅ | Elegir micrófono por voz o desde el icono, con vuelta automática al de Windows | — |
 
 ## Comandos actuales
 

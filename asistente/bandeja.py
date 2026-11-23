@@ -12,6 +12,7 @@ import pystray
 from PIL import Image, ImageDraw, ImageFont
 
 from . import __version__, interfaz, windows
+from .servicios import microfonos
 from .core import procesar
 from .voz.bucle import BucleVoz
 
@@ -75,6 +76,7 @@ class Bandeja:
             pystray.Menu.SEPARATOR,
             Item("Escribir una orden…", self._escribir, default=True),
             Item("Silenciar micrófono", self._alternar_silencio, checked=lambda _: self.bucle.silenciado),
+            Item("Micrófono", pystray.Menu(self._opciones_micro)),
             Item("Iniciar con Windows", self._alternar_inicio, checked=lambda _: windows.inicio_automatico()),
             Item("Abrir registro", lambda: os.startfile(windows.REGISTRO)),
             pystray.Menu.SEPARATOR,
@@ -89,6 +91,25 @@ class Bandeja:
     def _alternar_silencio(self) -> None:
         self.bucle.silenciar(not self.bucle.silenciado)
         self._mostrar_estado("silenciado" if self.bucle.silenciado else "escuchando")
+
+    def _opciones_micro(self):
+        """Submenú (se genera cada vez que se abre): predeterminado de Windows + cada micrófono."""
+        Item = pystray.MenuItem
+        actual = microfonos.actual()
+
+        def elegir(nombre: str):
+            def accion() -> None:
+                microfonos.elegir(nombre)
+                self.icono.notify(f"Micrófono: {microfonos.nombre_en_uso()}", self.nombre)
+                self.icono.update_menu()
+            return accion
+
+        yield Item("Predeterminado de Windows", elegir(""), checked=lambda _: microfonos.actual() is None,
+                   radio=True)
+        for m in microfonos.listar():
+            yield Item(m.nombre, elegir(m.nombre), checked=lambda _, m=m: microfonos.actual() == m, radio=True)
+        if actual is None and microfonos.configurado():
+            yield Item(f"«{microfonos.configurado()}» (no conectado)", None, enabled=False)
 
     def _alternar_inicio(self) -> None:
         try:
