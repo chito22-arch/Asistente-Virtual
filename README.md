@@ -9,10 +9,21 @@ python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
 copy .env.example .env
-python -m asistente
+python -m asistente          # modo texto
+python -m asistente --voz    # modo voz
 ```
 
+En VS Code: botón ▶ sobre `asistente/__main__.py` = modo voz; F5 permite elegir "Jarvis (voz)" o "Jarvis (texto)".
+
 Pruebas: `python -m unittest discover tests`
+
+## Modo voz
+
+- Empieza cada orden con el nombre: *"Jarvis, pon música de Queen"*. Solo *"Jarvis"* → responde "¿Sí?".
+- Mientras habla puedes cortarle diciendo *"Jarvis"* (o *"Jarvis, otra orden"*) o pulsando **Esc**.
+- Confirmaciones (enviar correo, crear evento) se contestan diciendo "sí" o "no".
+- Oído: Whisper `small` local (sin internet; la primera vez descarga ~460 MB). Voz: Helena (Windows).
+- Ajustes en `.env`: `NOMBRE_ASISTENTE`, `WHISPER_MODELO` (base/small/medium), `VOZ` (Helena/Sabina).
 
 ## Configurar Google (Gmail y Calendar)
 
@@ -61,7 +72,7 @@ entrada (texto / voz) -> core.procesar() -> Skill -> respuesta (texto / voz)
 | v0.2 ✅ | Gmail: no leídos, leer, buscar, enviar (con confirmación) | `google-api-python-client`, `google-auth-oauthlib` |
 | v0.3 ✅ | Google Calendar: ver agenda, crear eventos (con confirmación) | (mismas que Gmail) |
 | v0.4 ✅ | Spotify: canción/artista/álbum/playlist, pausa, siguiente, volumen | `spotipy` |
-| v0.5 | Voz: escuchar (palabra de activación) y hablar | `faster-whisper` / `SpeechRecognition`, `pyttsx3` |
+| v0.5 ✅ | Voz: palabra de activación, respuestas habladas e interrumpibles | `faster-whisper`, `sounddevice`, SAPI (`comtypes`) |
 | v0.6 | Lenguaje natural con IA (entender frases libres) | API de Claude con *tool use* |
 | v1.0 | Icono en bandeja del sistema + arranque con Windows | `pystray` |
 
