@@ -1,5 +1,5 @@
 import re
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 
 from googleapiclient.errors import HttpError
 
@@ -18,6 +18,11 @@ RE_CONSULTA = re.compile(
     r"\b(agenda|calendario|eventos|reuniones|citas|qu[eé] tengo|tengo algo|estoy libre)\b", re.I
 )
 
+RE_CONSULTA_SIMPLE = re.compile(
+    r"(?:qu[eé] tengo|mi agenda|agenda|calendario)(?: para| de| del)?"
+    r"(?: hoy| mañana| pasado mañana| esta semana| la semana| el (?:lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo))?"
+)
+
 
 class CalendarioSkill(Skill):
     nombre = "calendario"
@@ -30,6 +35,9 @@ class CalendarioSkill(Skill):
         if RE_CREAR.search(texto):
             return True
         return bool(RE_CONSULTA.search(texto)) and not re.search(r"\b(correos?|emails?)\b", texto)
+
+    def directo(self, texto: str) -> bool:
+        return bool(RE_CONSULTA_SIMPLE.fullmatch(texto))
 
     def ejecutar(self, texto: str, original: str) -> str:
         try:
@@ -53,10 +61,18 @@ class CalendarioSkill(Skill):
                     and not re.search(r"\bqu[eé] tengo\b", texto):
                 desde, dias, titulo = hoy, 7, "Próximos 7 días"
             else:
-                dia = dia or hoy
-                desde, dias = dia, 1
-                titulo = "Hoy" if dia == hoy else ("Mañana" if dia == hoy + timedelta(days=1)
-                                                   else fechas.formatear_dia(dia))
+                desde, dias, titulo = dia or hoy, 1, None
+        return self.consultar(desde, dias, titulo)
+
+    def consultar(self, desde: date, dias: int = 1, titulo: str | None = None) -> str:
+        """Lista los eventos de `dias` días a partir de `desde`."""
+        hoy = date.today()
+        if titulo is None:
+            if dias == 1:
+                titulo = "Hoy" if desde == hoy else ("Mañana" if desde == hoy + timedelta(days=1)
+                                                     else fechas.formatear_dia(desde))
+            else:
+                titulo = f"Del {fechas.formatear_dia(desde)} al {fechas.formatear_dia(desde + timedelta(days=dias - 1))}"
 
         inicio = datetime.combine(desde, datetime.min.time()).astimezone()
         fin = inicio + timedelta(days=dias)
@@ -92,7 +108,11 @@ class CalendarioSkill(Skill):
             titulo = nombre_tipo
         elif titulo.lower().startswith("con ") or tipo in ("reunión", "reunion", "cita"):
             titulo = f"{nombre_tipo} {titulo}"
+        return self.crear_evento(titulo, dia, hora, duracion)
 
+    def crear_evento(self, titulo: str, dia: date, hora: time | None = None,
+                     duracion: timedelta | None = None) -> str:
+        """Crea el evento tras pedir confirmación. Sin hora = evento de día completo."""
         if hora is None:  # evento de día completo
             cuerpo = {"summary": titulo, "start": {"date": dia.isoformat()},
                       "end": {"date": (dia + timedelta(days=1)).isoformat()}}

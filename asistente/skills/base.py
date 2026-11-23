@@ -13,6 +13,10 @@ class Skill(ABC):
     def puede_manejar(self, texto: str) -> bool:
         """Devuelve True si esta habilidad entiende el comando (texto ya en minúsculas)."""
 
+    def directo(self, texto: str) -> bool:
+        """True si es un comando simple e inequívoco que no necesita pasar por la IA."""
+        return False
+
     @abstractmethod
     def ejecutar(self, texto: str, original: str) -> str:
         """Ejecuta el comando y devuelve la respuesta.

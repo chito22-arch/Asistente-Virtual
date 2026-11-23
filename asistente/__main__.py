@@ -24,13 +24,32 @@ if not __package__:
 from dotenv import load_dotenv
 
 from . import __version__, interfaz
-from .core import normalizar, procesar
+from .core import activar_ia, normalizar, procesar
 
 DESPEDIDAS = {"salir", "exit", "adiós", "adios", "apágate", "apagate", "hasta luego"}
 # Órdenes que, dichas mientras habla, solo sirven para callarlo (no pausan Spotify, etc.).
 CALLAR = {"para", "calla", "cállate", "callate", "silencio", "basta", "stop", "vale", "ya", "ok"}
 MAX_CARACTERES_VOZ = 300  # las respuestas más largas se leen resumidas; el resto queda en pantalla
 INTERRUPCION_TROZO = 3.0  # segundos de audio que se analizan mientras habla
+
+
+def preparar_ia(nombre: str) -> None:
+    """Activa el agente de IA si está configurado y disponible; si no, quedan los comandos fijos."""
+    from .ia.agente import Agente
+    from .ia.proveedores import crear_proveedor
+
+    proveedor = crear_proveedor()
+    if proveedor is None:
+        print("IA: desactivada (solo comandos fijos).")
+        return
+    if not proveedor.disponible():
+        print(f"IA: {proveedor.nombre} no disponible; uso solo comandos fijos.")
+        if hasattr(proveedor, "modelo"):
+            print(f"     ¿Está Ollama instalado y el modelo descargado?  ollama pull {proveedor.modelo}")
+        return
+    proveedor.precargar()
+    activar_ia(Agente(proveedor, nombre))
+    print(f"IA: {proveedor.nombre} — entiendo frases libres.")
 
 
 def modo_texto(nombre: str) -> None:
@@ -166,9 +185,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(prog="asistente", description="Asistente virtual para PC")
     parser.add_argument("--voz", action="store_true", help="controlar el asistente hablando")
     parser.add_argument("--texto", action="store_true", help="modo escrito (por defecto con python -m)")
+    parser.add_argument("--sin-ia", action="store_true", help="no usar IA, solo comandos fijos")
     args = parser.parse_args()
 
     nombre = os.getenv("NOMBRE_ASISTENTE", "Asistente")
+    if args.sin_ia:
+        os.environ["IA_PROVEEDOR"] = "ninguno"
+    preparar_ia(nombre)
     modo_voz(nombre) if args.voz else modo_texto(nombre)
 
 

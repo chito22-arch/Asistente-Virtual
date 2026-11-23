@@ -1,6 +1,9 @@
+import logging
 import re
 
 from spotipy.exceptions import SpotifyException
+
+logging.getLogger("spotipy").setLevel(logging.CRITICAL)  # los errores ya se explican al usuario
 
 from ..servicios.spotify import FaltaConfigSpotify, cliente, dispositivo
 from .base import Skill
@@ -27,6 +30,12 @@ class SpotifySkill(Skill):
     def puede_manejar(self, texto: str) -> bool:
         return any(r.search(texto) for r in (RE_PONER, RE_PAUSA, RE_REANUDAR, RE_SIGUIENTE,
                                              RE_ANTERIOR, RE_QUE_SUENA, RE_VOLUMEN, RE_ALEATORIO))
+
+    def directo(self, texto: str) -> bool:
+        # Controles fijos; "pon X" va a la IA para entender peticiones como "algo tranquilo".
+        controles = (RE_PAUSA, RE_REANUDAR, RE_SIGUIENTE, RE_ANTERIOR, RE_QUE_SUENA)
+        return (any(r.search(texto) for r in controles) or bool(re.fullmatch(r"volumen \d{1,3}", texto))
+                or texto in ("sube el volumen", "baja el volumen", "pon música", "pon musica"))
 
     def ejecutar(self, texto: str, original: str) -> str:
         try:
@@ -60,7 +69,9 @@ class SpotifySkill(Skill):
             return "No encuentro ningún Spotify abierto. Abre la app de Spotify e inténtalo de nuevo."
         except SpotifyException as e:
             if e.http_status == 403:
-                return "Spotify no lo permite: el control de reproducción requiere una cuenta Premium."
+                if "PREMIUM" in f"{e.reason} {e.msg}".upper():
+                    return "Spotify no lo permite: el control de reproducción requiere una cuenta Premium."
+                return "Spotify no puede hacer eso ahora mismo (quizá ya estaba en ese estado). Inténtalo en un momento."
             if e.http_status == 404:
                 return "No hay ningún reproductor activo. Abre Spotify y pon algo una vez."
             return f"Error de Spotify: {e.msg}"

@@ -53,6 +53,18 @@ Controlar la reproducción requiere **Spotify Premium**.
 5. Abre la app de Spotify en el PC, ejecuta el asistente y escribe `qué suena`: se abrirá el navegador para autorizar.
    El token se guarda en `.cache-spotify` (ignorado por git).
 
+## IA (frases libres)
+
+Con [Ollama](https://ollama.com) instalado: `ollama pull qwen3:8b`. Jarvis arranca Ollama si está cerrado.
+
+- Los comandos simples ("pausa", "qué hora es", "revisa mi correo") van directos, sin IA.
+- El resto lo interpreta la IA, que elige una herramienta (Gmail, Calendar, Spotify, apps) y sus datos.
+  El resultado de la herramienta es la respuesta, así el modelo no puede inventarse correos ni eventos.
+- Si dices una fecha u hora explícita, la calcula el intérprete propio (los modelos pequeños fallan con los días).
+- Si Ollama no está disponible, sigue funcionando con los comandos fijos. `--sin-ia` la desactiva.
+- Ejemplos: *"ponme algo tranquilo para trabajar"*, *"mira si me ha escrito Amazon"* → *"¿y Ryanair?"*,
+  *"apúntame cena con Ana el viernes a las 9 de la noche"*, *"¿tengo algo el sábado?"* → *"¿y el domingo?"*.
+
 ## Arquitectura
 
 Cada integración es una **Skill** (`asistente/skills/`) con dos métodos: `puede_manejar(texto)` y `ejecutar(texto, original)`.
@@ -73,7 +85,7 @@ entrada (texto / voz) -> core.procesar() -> Skill -> respuesta (texto / voz)
 | v0.3 ✅ | Google Calendar: ver agenda, crear eventos (con confirmación) | (mismas que Gmail) |
 | v0.4 ✅ | Spotify: canción/artista/álbum/playlist, pausa, siguiente, volumen | `spotipy` |
 | v0.5 ✅ | Voz: palabra de activación, respuestas habladas e interrumpibles | `faster-whisper`, `sounddevice`, SAPI (`comtypes`) |
-| v0.6 | Lenguaje natural con IA (entender frases libres) | API de Claude con *tool use* |
+| v0.6 ✅ | Frases libres con IA local (Ollama + qwen3:8b) usando las skills como herramientas | `ollama` |
 | v1.0 | Icono en bandeja del sistema + arranque con Windows | `pystray` |
 
 ## Comandos actuales

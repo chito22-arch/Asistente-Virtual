@@ -40,6 +40,10 @@ class AppsSkill(Skill):
     def puede_manejar(self, texto: str) -> bool:
         return bool(PATRON.match(texto))
 
+    def directo(self, texto: str) -> bool:
+        m = PATRON.match(texto)
+        return bool(m) and (m.group(2).strip() in APLICACIONES or m.group(2).strip() in WEBS)
+
     def ejecutar(self, texto: str, original: str) -> str:
         objetivo = PATRON.match(texto).group(2).strip()
 
