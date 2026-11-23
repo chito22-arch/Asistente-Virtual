@@ -8,7 +8,7 @@ from typing import Callable
 
 from .. import __version__, interfaz
 from ..core import normalizar, procesar
-from ..servicios import recordatorios
+from ..servicios import microfonos, recordatorios
 
 DESPEDIDAS = {"salir", "exit", "adiós", "adios", "apágate", "apagate", "hasta luego"}
 # Órdenes que, dichas mientras habla, solo sirven para callarlo (no pausan Spotify, etc.).
@@ -45,7 +45,10 @@ class Voz:
 
         def vigilar() -> None:
             while vigilar_nombre and not parar.is_set():
-                audio = self.oido.grabar_frase(duracion_max=INTERRUPCION_TROZO, detener=parar)
+                try:
+                    audio = self.oido.grabar_frase(duracion_max=INTERRUPCION_TROZO, detener=parar)
+                except Exception:  # micrófono no disponible: se puede seguir hablando sin vigilar
+                    return
                 if audio is None or parar.is_set():
                     continue
                 orden = buscar_interrupcion(self.oido.transcribir(audio), self.nombre)
@@ -89,6 +92,7 @@ class BucleVoz:
         self._silenciado = threading.Event()
         self._despertar = threading.Event()  # corta una escucha en curso (silenciar / salir / aviso)
         self._avisos: queue.Queue[str] = queue.Queue()
+        self._cambio_micro = threading.Event()
         self.voz: Voz | None = None
 
     # --- control desde fuera ---------------------------------------------
@@ -106,6 +110,11 @@ class BucleVoz:
     def avisar(self, texto: str) -> None:
         """Pide decir un aviso (recordatorio) en cuanto se pueda. Seguro desde cualquier hilo."""
         self._avisos.put(texto)
+        self._despertar.set()
+
+    def _micro_cambiado(self, _nombre: str) -> None:
+        """Se eligió otro micrófono (por voz o desde el icono): recalibrar antes de volver a escuchar."""
+        self._cambio_micro.set()
         self._despertar.set()
 
     def parar(self) -> None:
@@ -127,13 +136,37 @@ class BucleVoz:
 
         self._estado("cargando")
         oido = Oido(self.nombre)
+        if microfonos.configurado() and microfonos.actual() is None:
+            self.avisar(f"No encuentro el micrófono «{microfonos.configurado()}»; uso el de Windows.")
         print("Calibrando micrófono: guarda silencio un segundo...")
         oido.calibrar()
         self.voz = Voz(oido, Hablante(), self.nombre)
         interfaz.usar(self.voz)
         recordatorios.gestor().suscribir(self.avisar)
+        microfonos.suscribir(self._micro_cambiado)
         print(f"{self.nombre} v{__version__} — MODO VOZ. Micrófono: {oido.nombre_micro} (umbral {oido.umbral:.3f})")
         print(f"Di '{self.nombre}, ayuda' o '{self.nombre}, apágate'.")
+
+    def _recalibrar(self) -> None:
+        self._estado("cargando")
+        try:
+            self.voz.oido.calibrar()
+            print(f"Micrófono: {microfonos.nombre_en_uso()} (umbral {self.voz.oido.umbral:.3f})")
+        except Exception as e:
+            self._fallo_micro(e)
+            return
+        if self.voz.oido.sin_senal is True:
+            self.avisar(f"No me llega ningún sonido de {microfonos.nombre_en_uso()}. ¿Está conectado? "
+                        f"Puedes volver al de Windows diciendo: usa el micrófono predeterminado.")
+
+    def _fallo_micro(self, error: Exception) -> None:
+        print(f"Error con el micrófono {microfonos.nombre_en_uso()}: {error}")
+        if microfonos.configurado():
+            nombre = microfonos.configurado()
+            microfonos.elegir("")  # vuelve al predeterminado de Windows (y recalibra)
+            self.avisar(f"Ya no puedo usar el micrófono «{nombre}». Vuelvo al de Windows.")
+        else:
+            self._salir.wait(2)  # el de Windows tampoco va: reintentar sin saturar
 
     def ejecutar(self, saludo: str = "Hola, ¿en qué te ayudo?") -> None:
         """Escucha y responde hasta que se llame a parar() o digas 'apágate'."""
@@ -153,6 +186,11 @@ class BucleVoz:
                 else:
                     pendiente = voz.hablar(aviso) or pendiente
 
+            if self._cambio_micro.is_set():
+                self._cambio_micro.clear()
+                self._recalibrar()
+                continue
+
             if self._silenciado.is_set():
                 self._estado("silenciado")
                 self._despertar.wait()
@@ -166,7 +204,11 @@ class BucleVoz:
             else:
                 self._estado("escuchando")
                 print("🎤 Escuchando...", end="\r", flush=True)
-                frase = oido.escuchar(detener=self._despertar)
+                try:
+                    frase = oido.escuchar(detener=self._despertar)
+                except Exception as e:  # micrófono desconectado (p. ej. auriculares Bluetooth apagados)
+                    self._fallo_micro(e)
+                    continue
                 if self._despertar.is_set():
                     self._despertar.clear()
                     continue

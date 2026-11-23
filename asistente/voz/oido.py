@@ -10,6 +10,8 @@ import time
 import numpy as np
 import sounddevice as sd
 
+from ..servicios import microfonos
+
 TASA = 16000
 BLOQUE = 480  # 30 ms
 PRE_ROLL = 10  # bloques guardados antes de detectar voz (300 ms), para no cortar el inicio
@@ -34,14 +36,21 @@ class Oido:
         p = palabra_activacion
         self.prompt = f"{p}, abre Spotify. {p}, pon música de Queen. {p}, ¿qué tengo hoy? {p}, revisa mi correo."
         self.umbral = 0.01
-        self.nombre_micro = sd.query_devices(kind="input")["name"]
+        self.sin_senal = False
+
+    @property
+    def nombre_micro(self) -> str:
+        return microfonos.nombre_en_uso()
 
     def calibrar(self, segundos: float = 1.0) -> None:
         """Mide el ruido ambiente para saber a partir de qué volumen hay voz."""
-        audio = sd.rec(int(segundos * TASA), samplerate=TASA, channels=1, dtype="float32")
-        sd.wait()
+        with microfonos.EN_USO:
+            audio = sd.rec(int(segundos * TASA), samplerate=TASA, channels=1, dtype="float32",
+                           device=microfonos.indice())
+            sd.wait()
         bloques = audio[: len(audio) // BLOQUE * BLOQUE, 0].reshape(-1, BLOQUE)
         ruido = float(np.median(np.sqrt(np.mean(bloques ** 2, axis=1))))  # mediana: ignora golpes sueltos
+        self.sin_senal = float(np.abs(audio).max()) == 0.0  # silencio digital: micro virtual sin conectar
         # Con límite superior: si al calibrar hay ruido (música, alguien hablando) no se queda sordo.
         self.umbral = min(max(ruido * 3, UMBRAL_MIN), UMBRAL_MAX)
 
@@ -57,7 +66,8 @@ class Oido:
         inicio = time.monotonic()
         dur_bloque = BLOQUE / TASA
 
-        with sd.InputStream(samplerate=TASA, channels=1, dtype="float32", blocksize=BLOQUE) as flujo:
+        with microfonos.EN_USO, sd.InputStream(samplerate=TASA, channels=1, dtype="float32", blocksize=BLOQUE,
+                                               device=microfonos.indice()) as flujo:
             while True:
                 if detener and detener.is_set():
                     return None
