@@ -90,6 +90,6 @@ class Oido:
             return ""
         return texto
 
-    def escuchar(self, espera_max: float | None = None) -> str:
-        audio = self.grabar_frase(espera_max)
+    def escuchar(self, espera_max: float | None = None, detener: threading.Event | None = None) -> str:
+        audio = self.grabar_frase(espera_max, detener=detener)
         return self.transcribir(audio) if audio is not None else ""

@@ -27,4 +27,4 @@ class Skill(ABC):
 
     def confirmar(self, pregunta: str) -> bool:
         """Pide confirmación antes de acciones irreversibles (enviar, crear...), por teclado o por voz."""
-        return interfaz.es_afirmativo(interfaz.actual.preguntar(pregunta))
+        return interfaz.es_afirmativo(interfaz.obtener().preguntar(pregunta))
