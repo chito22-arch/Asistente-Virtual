@@ -98,7 +98,7 @@ def buscar_duracion(texto: str) -> tuple[timedelta | None, re.Match | None]:
 
 def quitar(texto: str, *coincidencias: re.Match | None) -> str:
     """Elimina del texto los fragmentos encontrados (fecha, hora...) para dejar solo el título."""
-    tramos = sorted((m.span() for m in coincidencias if m), reverse=True)
+    tramos = sorted((m if isinstance(m, tuple) else m.span() for m in coincidencias if m), reverse=True)
     for ini, fin in tramos:
         texto = texto[:ini] + " " + texto[fin:]
     return re.sub(r"\s+", " ", texto).strip()
@@ -106,3 +106,71 @@ def quitar(texto: str, *coincidencias: re.Match | None) -> str:
 
 def formatear_dia(f: date) -> str:
     return f"{DIAS_CORTOS[f.weekday()]} {f:%d/%m}"
+
+
+# --- duraciones relativas: "en 20 minutos", "dentro de una hora y media" ---------
+
+NUMEROS = {
+    "un": 1, "uno": 1, "una": 1, "dos": 2, "tres": 3, "cuatro": 4, "cinco": 5, "seis": 6, "siete": 7,
+    "ocho": 8, "nueve": 9, "diez": 10, "once": 11, "doce": 12, "quince": 15, "veinte": 20,
+    "veinticinco": 25, "treinta": 30, "cuarenta y cinco": 45, "cuarenta": 40, "cincuenta": 50, "noventa": 90,
+}
+_NUM = r"\d+(?:[.,]\d+)?|" + "|".join(sorted(NUMEROS, key=len, reverse=True))
+_INICIO_RELATIVA = re.compile(r"\b(?:en|dentro de|de|durante|por)\s+", re.I)
+_COMPONENTE = re.compile(
+    rf"(?P<n>{_NUM})\s*(?P<u>horas?|h|minutos?|mins?|segundos?|segs?)\b(?:\s+y\s+(?P<frac>media|cuarto)\b)?", re.I)
+_UNION = re.compile(r"\s*(?:y|,)\s*", re.I)
+_ESPECIALES = [("una hora y media", 90), ("hora y media", 90), ("un cuarto de hora", 15),
+               ("cuarto de hora", 15), ("media hora", 30)]
+
+
+def _numero(texto: str) -> float:
+    texto = texto.lower()
+    return NUMEROS[texto] if texto in NUMEROS else float(texto.replace(",", "."))
+
+
+def _unidad(u: str) -> timedelta:
+    u = u.lower()
+    if u.startswith("h"):
+        return timedelta(hours=1)
+    if u.startswith("m"):
+        return timedelta(minutes=1)
+    return timedelta(seconds=1)
+
+
+def buscar_duracion_relativa(texto: str) -> tuple[timedelta | None, tuple[int, int] | None]:
+    """Busca "en 20 minutos", "dentro de 1 hora y 10 minutos", "de media hora"...
+
+    Devuelve (duración, (inicio, fin) del fragmento) o (None, None).
+    """
+    for m in _INICIO_RELATIVA.finditer(texto):
+        pos, total, fin = m.end(), timedelta(), None
+        resto = texto[pos:].lower()
+        for frase, minutos in _ESPECIALES:
+            if resto.startswith(frase):
+                total, fin = timedelta(minutes=minutos), pos + len(frase)
+                break
+        else:
+            while c := _COMPONENTE.match(texto, pos):
+                unidad = _unidad(c["u"])
+                total += unidad * _numero(c["n"])
+                if c["frac"]:
+                    total += unidad / (2 if c["frac"].lower() == "media" else 4)
+                fin = pos = c.end()
+                union = _UNION.match(texto, pos)
+                if not (union and _COMPONENTE.match(texto, union.end())):
+                    break
+                pos = union.end()
+        if fin and total:
+            return total, (m.start(), fin)
+    return None, None
+
+
+def duracion_legible(d: timedelta) -> str:
+    segundos = round(d.total_seconds())
+    h, resto = divmod(segundos, 3600)
+    m, s = divmod(resto, 60)
+    partes = [f"{n} {nombre}{'s' if n != 1 else ''}" for n, nombre in ((h, "hora"), (m, "minuto"), (s, "segundo")) if n]
+    if not partes:
+        return "0 segundos"
+    return " y ".join([", ".join(partes[:-1]), partes[-1]]) if len(partes) > 1 else partes[0]
