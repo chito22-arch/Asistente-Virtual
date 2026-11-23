@@ -10,6 +10,7 @@ from ..core import normalizar
 from ..skills import SKILLS
 from ..skills.apps import AppsSkill
 from ..skills.calendario import CalendarioSkill
+from ..skills.cerrar import CerrarSkill
 from ..skills.gmail import GmailSkill
 from ..skills.recordatorios import RecordatoriosSkill
 from ..skills.spotify import SpotifySkill
@@ -36,6 +37,13 @@ DEFINICIONES = [
              "conocida (youtube, gmail). Si el usuario lo describe, deduce el nombre del programa "
              "(p. ej. 'el navegador de Mozilla' -> 'Firefox', 'el editor de código' -> 'Visual Studio Code').",
              {"nombre": {"type": "string", "description": "Nombre del programa, carpeta o web"}}, ["nombre"]),
+    _funcion("cerrar_aplicacion",
+             "Cierra un programa abierto, como pulsar la X (el programa puede preguntar si guardar). "
+             "forzar=true solo si el usuario lo pide expresamente ('a la fuerza', 'del todo'); pedirá confirmación.",
+             {"nombre": {"type": "string", "description": "Nombre del programa, p. ej. 'Discord', 'Opera'"},
+              "forzar": {"type": "boolean"}},
+             ["nombre"]),
+    _funcion("programas_abiertos", "Dice qué programas tiene abiertos el usuario.", {}, []),
     _funcion("spotify_reproducir",
              "Reproduce música en Spotify. Para peticiones de ambiente o estado de ánimo "
              "('algo tranquilo', 'música para correr') usa tipo=playlist con una búsqueda descriptiva.",
@@ -155,6 +163,12 @@ def _corregir_con_peticion(nombre: str, a: dict, peticion: str) -> dict:
 def _ejecutar(nombre: str, a: dict) -> str:
     if nombre == "abrir_aplicacion":
         return _por_texto(_skill(AppsSkill), f"abre {str(a['nombre']).lower()}")
+
+    if nombre == "cerrar_aplicacion":
+        return _skill(CerrarSkill).cerrar(str(a["nombre"]).strip(), bool(a.get("forzar")))
+
+    if nombre == "programas_abiertos":
+        return _skill(CerrarSkill).listar()
 
     if nombre == "spotify_reproducir":
         consulta = a["consulta"]
