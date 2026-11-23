@@ -11,13 +11,15 @@ import threading
 if not __package__:
     # Ejecutado como archivo suelto (p. ej. con el botón ▶ de VS Code): se relanza como
     # módulo con el Python del entorno .venv, que es el que tiene las librerías instaladas.
+    # Sin argumentos arranca en modo voz; usa --texto para el modo escrito.
     import subprocess
     from pathlib import Path
 
     raiz = Path(__file__).resolve().parents[1]
     venv = raiz / ".venv" / "Scripts" / "python.exe"
     python = str(venv) if venv.exists() else sys.executable
-    sys.exit(subprocess.call([python, "-m", "asistente", *sys.argv[1:]], cwd=raiz))
+    args = sys.argv[1:] or ["--voz"]
+    sys.exit(subprocess.call([python, "-m", "asistente", *args], cwd=raiz))
 
 from dotenv import load_dotenv
 
@@ -32,7 +34,7 @@ INTERRUPCION_TROZO = 3.0  # segundos de audio que se analizan mientras habla
 
 
 def modo_texto(nombre: str) -> None:
-    print(f"{nombre} v{__version__} listo. Escribe 'ayuda' o 'salir'.")
+    print(f"{nombre} v{__version__} — MODO TEXTO (no usa el micrófono). Escribe 'ayuda' o 'salir'.")
     while True:
         try:
             texto = input("> ").strip()
@@ -120,7 +122,8 @@ def modo_voz(nombre: str) -> None:
     voz = Voz(oido, Hablante(), nombre)
     interfaz.usar(voz)
 
-    print(f"{nombre} v{__version__} en modo voz. Di '{nombre}, ayuda' o '{nombre}, apágate'.")
+    print(f"{nombre} v{__version__} — MODO VOZ. Micrófono: {oido.nombre_micro} (umbral {oido.umbral:.3f})")
+    print(f"Di '{nombre}, ayuda' o '{nombre}, apágate'.")
     print(f"Para cortarle mientras habla: di '{nombre}' o pulsa Esc. Ctrl+C para salir.")
     pendiente = voz.hablar("Hola, ¿en qué te ayudo?")
     try:
@@ -130,6 +133,7 @@ def modo_voz(nombre: str) -> None:
                 if normalizar(comando) in CALLAR:
                     continue
             else:
+                print("🎤 Escuchando...", end="\r", flush=True)
                 frase = oido.escuchar()
                 if not frase:
                     continue
@@ -161,6 +165,7 @@ def main() -> None:
         sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(prog="asistente", description="Asistente virtual para PC")
     parser.add_argument("--voz", action="store_true", help="controlar el asistente hablando")
+    parser.add_argument("--texto", action="store_true", help="modo escrito (por defecto con python -m)")
     args = parser.parse_args()
 
     nombre = os.getenv("NOMBRE_ASISTENTE", "Asistente")

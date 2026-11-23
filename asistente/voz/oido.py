@@ -16,6 +16,8 @@ PRE_ROLL = 10  # bloques guardados antes de detectar voz (300 ms), para no corta
 SILENCIO_FIN = 0.8  # segundos de silencio que cierran la frase
 DURACION_MAX = 15.0
 DURACION_MIN = 0.35
+UMBRAL_MIN = 0.006
+UMBRAL_MAX = 0.025
 
 # Frases que Whisper "inventa" a veces con ruido de fondo.
 ALUCINACIONES = ("amara.org", "subtítulos", "gracias por ver", "suscríbete")
@@ -32,13 +34,16 @@ class Oido:
         p = palabra_activacion
         self.prompt = f"{p}, abre Spotify. {p}, pon música de Queen. {p}, ¿qué tengo hoy? {p}, revisa mi correo."
         self.umbral = 0.01
+        self.nombre_micro = sd.query_devices(kind="input")["name"]
 
     def calibrar(self, segundos: float = 1.0) -> None:
         """Mide el ruido ambiente para saber a partir de qué volumen hay voz."""
         audio = sd.rec(int(segundos * TASA), samplerate=TASA, channels=1, dtype="float32")
         sd.wait()
-        ruido = float(np.sqrt(np.mean(audio ** 2)))
-        self.umbral = max(ruido * 2.5, 0.008)
+        bloques = audio[: len(audio) // BLOQUE * BLOQUE, 0].reshape(-1, BLOQUE)
+        ruido = float(np.median(np.sqrt(np.mean(bloques ** 2, axis=1))))  # mediana: ignora golpes sueltos
+        # Con límite superior: si al calibrar hay ruido (música, alguien hablando) no se queda sordo.
+        self.umbral = min(max(ruido * 3, UMBRAL_MIN), UMBRAL_MAX)
 
     def grabar_frase(self, espera_max: float | None = None, duracion_max: float = DURACION_MAX,
                      detener: threading.Event | None = None) -> np.ndarray | None:
