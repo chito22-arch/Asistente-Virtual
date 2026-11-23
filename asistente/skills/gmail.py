@@ -85,8 +85,7 @@ class GmailSkill(Skill):
         return f"De: {cab.get('From')}\nAsunto: {cab.get('Subject')}\n\n{cuerpo.strip()}"
 
     def _enviar(self, para: str, asunto: str, cuerpo: str) -> str:
-        print(f"Para: {para}\nAsunto: {asunto}\nMensaje: {cuerpo}")
-        if not self.confirmar("¿Envío este correo?"):
+        if not self.confirmar(f"Para: {para}\nAsunto: {asunto}\nMensaje: {cuerpo}\n¿Envío este correo?"):
             return "Envío cancelado."
 
         correo = EmailMessage()

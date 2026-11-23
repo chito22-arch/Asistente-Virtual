@@ -1,0 +1,24 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Jarvis (voz)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "asistente",
+            "args": ["--voz"],
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "python": "${workspaceFolder}/.venv/Scripts/python.exe"
+        },
+        {
+            "name": "Jarvis (texto)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "asistente",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "python": "${workspaceFolder}/.venv/Scripts/python.exe"
+        }
+    ]
+}
